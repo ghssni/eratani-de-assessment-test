@@ -1,0 +1,15 @@
+__pycache__/
+ENV/
+logs/
+airflow.db
+airflow.cfg
+*.pid
+*.lock
+dbt.log
+logs/
+**/.dockerignore
+docker-compose.override.yml
+.docker/
+*.tar
+__MACOSX/
+

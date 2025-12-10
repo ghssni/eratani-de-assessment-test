@@ -1,0 +1,12 @@
+eratani_agriculture:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: '{{ env_var("DBT_POSTGRES_HOST", "localhost") }}'
+      user: '{{ env_var("DBT_POSTGRES_USER", "airflow") }}'
+      password: '{{ env_var("DBT_POSTGRES_PASSWORD", "airflow") }}'
+      port: '{{ env_var("DBT_POSTGRES_PORT", "5432") | int }}'
+      dbname: '{{ env_var("DBT_POSTGRES_DB", "airflow") }}'
+      schema: 'public'
+      threads: 4

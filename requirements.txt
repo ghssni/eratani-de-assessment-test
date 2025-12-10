@@ -1,0 +1,5 @@
+apache-airflow[postgres]==2.9.0
+psycopg2-binary>=2.9
+pandas>=2.1
+sqlalchemy>=1.4
+dbt-postgres==1.7.0

@@ -6,13 +6,15 @@ from datetime import datetime
 from pathlib import Path
 
 from airflow import DAG
+from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.postgres.operators.postgres import PostgresOperator
 
 # This DAG creates a staging table, ingests the agriculture CSV into PostgreSQL
-# in an idempotent way (truncate + load), and logs the ingested row count.
-# It is scheduled to run daily at 06:00 UTC.
+# in an idempotent way (truncate + load), logs the ingested row count,
+# and then runs dbt models to build the fact table and metrics.
+# The pipeline is scheduled to run daily at 06:00 UTC.
 
 DEFAULT_CONN_ID = os.environ.get("AG_POSTGRES_CONN_ID", "postgres_default")
 
@@ -22,6 +24,15 @@ DATA_PATH = Path(
         str(Path(__file__).resolve().parents[2] / "data" / "agriculture_dataset.csv"),
     )
 )
+
+DBT_PROJECT_DIR = Path(
+    os.environ.get(
+        "AG_DBT_PROJECT_DIR",
+        str(Path(__file__).resolve().parents[2] / "dbt_project"),
+    )
+)
+
+DBT_TARGET = os.environ.get("AG_DBT_TARGET", "dev")
 
 
 def _load_csv_to_staging(**_: object) -> None:
@@ -69,6 +80,43 @@ def _log_row_count(**_: object) -> None:
     logging.info("Ingested %s rows into stg_agriculture_raw", row_count)
 
 
+def _dbt_command(task_id: str, command: str) -> BashOperator:
+    """
+    Helper to create a BashOperator for running dbt commands with the
+    proper environment variables.
+    """
+    env = {
+        "DBT_PROFILES_DIR": str(DBT_PROJECT_DIR),
+        "DBT_TARGET": DBT_TARGET,
+    }
+
+    return BashOperator(
+        task_id=task_id,
+        bash_command=command,
+        env=env,
+    )
+
+
+def _dbt_run(task_id: str, models: str) -> BashOperator:
+    """
+    Run dbt models selected by name or tag.
+    """
+    return _dbt_command(
+        task_id=task_id,
+        command=f"cd {DBT_PROJECT_DIR} && dbt run --select {models}",
+    )
+
+
+def _dbt_test(task_id: str, models: str) -> BashOperator:
+    """
+    Run dbt tests for the given models.
+    """
+    return _dbt_command(
+        task_id=task_id,
+        command=f"cd {DBT_PROJECT_DIR} && dbt test --select {models}",
+    )
+
+
 def _create_dag() -> DAG:
     with DAG(
         dag_id="agriculture_pipeline",
@@ -78,7 +126,8 @@ def _create_dag() -> DAG:
         default_args={"owner": "data-eng"},
         description=(
             "Daily pipeline to create the staging table, ingest agriculture CSV "
-            "data into PostgreSQL in an idempotent way, and log the row count."
+            "data into PostgreSQL in an idempotent way, log the row count, and "
+            "build downstream fact and metrics models via dbt."
         ),
         max_active_runs=1,
     ) as dag:
@@ -111,7 +160,17 @@ def _create_dag() -> DAG:
             python_callable=_log_row_count,
         )
 
-        create_staging_table >> load_csv >> log_count
+        dbt_run_models = _dbt_run(
+            task_id="dbt_run_models",
+            models="fact_farm_production agriculture_metrics",
+        )
+
+        dbt_tests = _dbt_test(
+            task_id="dbt_tests",
+            models="fact_farm_production agriculture_metrics",
+        )
+
+        create_staging_table >> load_csv >> log_count >> dbt_run_models >> dbt_tests
 
     return dag
 
