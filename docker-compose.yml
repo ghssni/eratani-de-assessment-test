@@ -1,0 +1,114 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  airflow-init:
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    entrypoint: /bin/bash
+    command: -c "airflow db init && airflow users create --role Admin --username admin --password admin --email admin@example.com --firstname Air --lastname Flow || true"
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      AIRFLOW_CONN_POSTGRES_DEFAULT: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      AG_POSTGRES_CONN_ID: postgres_default
+      AG_DATA_PATH: /opt/airflow/data/agriculture_dataset.csv
+      AG_DBT_PROJECT_DIR: /opt/airflow/dbt_project
+    depends_on:
+      - postgres
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./dbt_project:/opt/airflow/dbt_project
+      - ./data:/opt/airflow/data
+      - airflow_logs:/opt/airflow/logs
+      - airflow_home:/opt/airflow
+
+  airflow-webserver:
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    command: webserver
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      AIRFLOW_CONN_POSTGRES_DEFAULT: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      AG_POSTGRES_CONN_ID: postgres_default
+      AG_DATA_PATH: /opt/airflow/data/agriculture_dataset.csv
+      AG_DBT_PROJECT_DIR: /opt/airflow/dbt_project
+    depends_on:
+      - postgres
+      - airflow-init
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./dbt_project:/opt/airflow/dbt_project
+      - ./data:/opt/airflow/data
+      - airflow_logs:/opt/airflow/logs
+      - airflow_home:/opt/airflow
+
+  airflow-scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    command: scheduler
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      AIRFLOW_CONN_POSTGRES_DEFAULT: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      AG_POSTGRES_CONN_ID: postgres_default
+      AG_DATA_PATH: /opt/airflow/data/agriculture_dataset.csv
+      AG_DBT_PROJECT_DIR: /opt/airflow/dbt_project
+    depends_on:
+      - postgres
+      - airflow-init
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./dbt_project:/opt/airflow/dbt_project
+      - ./data:/opt/airflow/data
+      - airflow_logs:/opt/airflow/logs
+      - airflow_home:/opt/airflow
+
+  dbt-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.dbt
+    working_dir: /app/dbt_project
+    environment:
+      DBT_POSTGRES_HOST: postgres
+      DBT_POSTGRES_USER: airflow
+      DBT_POSTGRES_PASSWORD: airflow
+      DBT_POSTGRES_PORT: "5432"
+      DBT_POSTGRES_DB: airflow
+      DBT_PROFILES_DIR: /root/.dbt
+    command: bash -c "dbt run --select fact_farm_production agriculture_metrics && dbt test --select fact_farm_production agriculture_metrics"
+    depends_on:
+      - postgres
+    volumes:
+      - ./dbt_project:/app/dbt_project
+      - ./data:/app/data
+      - ./dbt_project/profiles.yml.example:/root/.dbt/profiles.yml:ro
+
+volumes:
+  pgdata:
+  airflow_logs:
+  airflow_home:

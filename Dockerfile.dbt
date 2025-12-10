@@ -1,0 +1,10 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+# Copy project as a base layer (bind mounts will override during development)
+COPY dbt_project/ /app/dbt_project/
+
+RUN pip install --no-cache-dir dbt-postgres==1.7.0 psycopg2-binary==2.9.9
+ENV DBT_PROFILES_DIR=/root/.dbt
+
+CMD ["dbt", "--help"]

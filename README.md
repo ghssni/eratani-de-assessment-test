@@ -47,6 +47,28 @@ This project ingests agriculture production data from a CSV into Postgres via Ai
 - **Fact (`fact_farm_production`)**: cleansed, deduplicated production records.
 - **Metrics (`agriculture_metrics` -> `agriculture_metrics_daily` table)**: KPI rows with `as_of_date`, `metric`, dimensions, `value`, `unit`, and `rank` for top-3 lists. Metrics include total yield by crop & season, yield per acre, fertilizer efficiency, water productivity, top crops by yield per acre, and top irrigation methods by average yield.
 
+## Containerized setup 
+Prereq: Docker + docker compose installed.
+
+1. Build images and initialize Airflow DB/user:
+   ```bash
+   docker compose build
+   docker compose run --rm airflow-init
+   ```
+2. Start the stack:
+   ```bash
+   docker compose up -d postgres airflow-webserver airflow-scheduler
+   ```
+   - Airflow UI: http://localhost:8080 (user/pass: `admin`/`admin` created by init step).
+3. dbt one-off (optional): run inside container on the same network/volumes:
+   ```bash
+   docker compose run --rm dbt-runner
+   ```
+Services:
+- Postgres `postgres:15` with credentials `airflow`/`airflow`, DB `airflow` (exposed 5432).
+- Airflow (webserver + scheduler) built from `Dockerfile.airflow`, mounting `./airflow/dags`, `./dbt_project`, and `./data`.
+- dbt runner built from `Dockerfile.dbt`, mounting project and using `profiles.yml.example` as the runtime profile.
+
 ## Sample metrics output (from the sample CSV)
 1. Total Yield (tons) per Crop & Season: 
 - Rice→ Wet 45, Dry 44; 
