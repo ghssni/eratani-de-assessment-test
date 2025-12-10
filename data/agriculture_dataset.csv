@@ -1,0 +1,7 @@
+Farm_ID,Crop_Type,Farm_Area(acres),Irrigation_Type,Fertilizer_Used(tons),Pesticide_Used(kg),Yield(tons),Soil_Type,Season,Water_Usage(cubic_meters)
+F001,Rice,12,Drip,2.5,18,45,Loam,Wet,3100
+F002,Corn,20,Sprinkler,3.1,25,52,Clay,Dry,2800
+F003,Soybean,15,Flood,1.9,12,34,Sandy,Wet,2600
+F004,Rice,10,Drip,2.2,14,44,Loam,Dry,2950
+F005,Wheat,18,Sprinkler,2.6,16,48,Clay,Dry,2700
+F006,Corn,22,Center Pivot,3.6,19,61,Loam,Wet,3300
