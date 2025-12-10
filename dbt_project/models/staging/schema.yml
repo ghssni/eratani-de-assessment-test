@@ -1,0 +1,34 @@
+version: 2
+
+sources:
+  - name: agriculture
+    schema: public
+    tables:
+      - name: stg_agriculture_raw
+        description: Raw agriculture CSV ingested via Airflow
+        columns:
+          - name: farm_id
+            tests: [not_null]
+          - name: crop_type
+            tests: [not_null]
+          - name: yield_tons
+            tests: [not_null]
+
+models:
+  - name: stg_agriculture
+    description: Cleaned staging view from raw agriculture data
+    columns:
+      - name: farm_id
+        tests: [not_null]
+      - name: crop_type
+        tests: [not_null]
+      - name: farm_area_acres
+        tests: [not_null]
+      - name: irrigation_type
+      - name: fertilizer_used_tons
+      - name: pesticide_used_kg
+      - name: yield_tons
+        tests: [not_null]
+      - name: soil_type
+      - name: season
+      - name: water_usage_cubic_meters

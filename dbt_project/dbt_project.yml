@@ -1,0 +1,21 @@
+name: 'eratani_project'
+version: '1.0.0'
+config-version: 2
+profile: 'eratani_project'
+
+dbt-cloud:
+  project-id: 70471823532903
+
+model-paths: ['models']
+target-path: 'target'
+clean-targets: ['target', 'dbt_packages']
+
+models:
+  eratani_agriculture:
+    +schema: public
+    staging:
+      +materialized: view
+    marts:
+      +materialized: table
+    metrics:
+      +materialized: table

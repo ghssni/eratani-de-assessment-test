@@ -1,0 +1,35 @@
+version: 2
+
+models:
+  - name: fact_farm_production
+    description: Grain-fact table of farm production records derived from staging data
+    columns:
+      - name: farm_id
+        tests: [not_null]
+      - name: crop_type
+        tests: [not_null]
+      - name: farm_area_acres
+        tests: [not_null]
+      - name: yield_tons
+        tests: [not_null]
+      - name: season
+      - name: soil_type
+      - name: irrigation_type
+      - name: fertilizer_used_tons
+      - name: pesticide_used_kg
+      - name: water_usage_cubic_meters
+
+  - name: agriculture_metrics
+    description: Daily rollup of agriculture KPIs sourced from fact_farm_production (materialized with alias agriculture_metrics_daily)
+    columns:
+      - name: as_of_date
+        tests: [not_null]
+      - name: metric
+        tests: [not_null]
+      - name: value
+        tests: [not_null]
+      - name: rank
+      - name: crop_type
+      - name: season
+      - name: irrigation_type
+      - name: unit
